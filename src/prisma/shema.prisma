@@ -1,0 +1,130 @@
+// prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// CONTEST (From ContestCreated event)
+// ============================================
+
+model Contest {
+  id                String    @id @default(uuid())
+  address           String    @unique
+  contestId         BigInt
+  
+  // From ContestCreated event
+  creator           String
+  contestStart      BigInt    @map("contest_start")
+  votingPeriod      BigInt    @map("voting_period")
+  
+  // Derived/Fetched from contract
+  votingDelay       BigInt    @map("voting_delay")
+  state             Int       @default(0) // 0=Queued, 1=Active, 2=Completed, 3=Canceled
+  costToPropose     String    @map("cost_to_propose")
+  costToVote        String    @map("cost_to_vote")
+  
+  // Aggregated stats (denormalized for speed)
+  totalProposals    Int       @default(0) @map("total_proposals")
+  totalVotes        String    @default("0") @map("total_votes")
+  
+  // Metadata
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+  blockNumber       BigInt    @map("block_number")
+  transactionHash   String    @map("transaction_hash")
+  
+  // Relations
+  proposals         Proposal[]
+  votes             Vote[]
+  
+  @@index([state, createdAt])
+  @@index([creator])
+  @@index([createdAt])
+  @@map("contests")
+}
+
+// ============================================
+// PROPOSAL (From ProposalCreated event)
+// ============================================
+
+model Proposal {
+  id              String    @id @default(uuid())
+  proposalId      String    @map("proposal_id")
+  contestAddress  String    @map("contest_address")
+  
+  // From ProposalCreated event
+  author          String
+  description     String    @db.Text
+  
+  // Fetched from contract.proposals()
+  contentHash     String    @map("content_hash")
+  totalVotes      String    @default("0") @map("total_votes")
+  
+  // Metadata
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+  blockNumber     BigInt    @map("block_number")
+  transactionHash String    @map("transaction_hash")
+  logIndex        Int       @map("log_index")
+  
+  // Relations
+  contest         Contest   @relation(fields: [contestAddress], references: [address], onDelete: Cascade)
+  votes           Vote[]
+  
+  @@unique([proposalId, contestAddress])
+  @@index([contestAddress, totalVotes(sort: Desc)])
+  @@index([author])
+  @@map("proposals")
+}
+
+// ============================================
+// VOTE (From VoteCast event)
+// ============================================
+
+model Vote {
+  id              String    @id @default(uuid())
+  proposalId      String    @map("proposal_id")
+  contestAddress  String    @map("contest_address")
+  
+  // From VoteCast event
+  voter           String
+  numVotes        String    @map("num_votes")
+  cost            String    // Cost paid for this vote
+  
+  // Metadata
+  votedAt         DateTime  @map("voted_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  blockNumber     BigInt    @map("block_number")
+  transactionHash String    @map("transaction_hash")
+  logIndex        Int       @map("log_index")
+  
+  // Relations
+  contest         Contest   @relation(fields: [contestAddress], references: [address], onDelete: Cascade)
+  proposal        Proposal  @relation(fields: [proposalId, contestAddress], references: [proposalId, contestAddress], onDelete: Cascade)
+  
+  @@unique([transactionHash, logIndex])
+  @@index([proposalId])
+  @@index([contestAddress])
+  @@index([voter])
+  @@index([votedAt])
+  @@map("votes")
+}
+
+// ============================================
+// SYNC STATE (Track indexing progress)
+// ============================================
+
+model SyncState {
+  id                  String    @id @default(uuid())
+  key                 String    @unique // e.g., "last_indexed_block", "factory_sync"
+  value               String    // Block number or status
+  updatedAt           DateTime  @updatedAt @map("updated_at")
+  
+  @@map("sync_state")
+}
