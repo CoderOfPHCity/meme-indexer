@@ -14,11 +14,22 @@ export class RedisService {
 
   private async initializeClient() {
     try {
-      this.client = createClient({
-        url: `redis://${this.configService.get('REDIS_HOST')}:6379`,
-        password: this.configService.get('REDIS_PASSWORD'),
-      });
-
+      // Use REDIS_URL if available, otherwise fallback to individual config
+      const redisUrl = this.configService.get<string>('REDIS_URL');
+      
+      if (redisUrl) {
+        // Use the full Redis URL from Railway
+        this.client = createClient({
+          url: redisUrl,
+        });
+      } else {
+        // Fallback to individual config for local development
+        this.client = createClient({
+          url: `redis://${this.configService.get('REDIS_HOST')}:6379`,
+          password: this.configService.get('REDIS_PASSWORD'),
+        });
+      }
+  
       this.client.on('error', (err) =>
         this.logger.error('Redis Client Error', err),
       );
