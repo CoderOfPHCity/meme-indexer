@@ -304,9 +304,8 @@ export class MemeContestMonitorService {
           topics: [this.VOTE_CAST_TOPIC],
         };
 
-        const logs = await this.blockchainService.getLogs(
-          this.provider,
-          filter,
+        const logs = await this.withRateLimit(() =>
+          this.blockchainService.getLogs(this.provider, filter),
         );
         const batchVotes = await Promise.all(
           logs.map(async (log) => {
@@ -344,6 +343,9 @@ export class MemeContestMonitorService {
         ).then((results) => results.filter((item) => item !== null));
 
         allVotes.push(...batchVotes);
+        if (currentBlock + this.BATCH_SIZE <= toBlock) {
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+        }
         this.logger.log(
           `Processed blocks ${currentBlock} to ${batchToBlock} for votes in ${contestAddress}`,
         );
