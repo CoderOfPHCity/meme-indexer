@@ -166,7 +166,6 @@ export class MemeContestIndexerService
 
   private async subscribeToContestEvents(contestAddress: string) {
     try {
-
       this.monitorService.addContestContract(contestAddress);
       // Subscribe to proposals
       this.monitorService.subscribeToProposals(
@@ -421,8 +420,6 @@ export class MemeContestIndexerService
       throw error;
     }
   }
-
-  
 
   async onModuleDestroy() {
     // Unsubscribe from all contests

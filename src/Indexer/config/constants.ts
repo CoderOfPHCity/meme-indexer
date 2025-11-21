@@ -20,7 +20,6 @@ export const REDIS_KEYS = {
   LAST_INDEXED_BLOCK_KEY: 'avalanche:last_indexed_block',
 } as const;
 
-
 export const FACTORY_ABI = [
   {
     type: 'constructor',
