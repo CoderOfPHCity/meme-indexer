@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ethers } from 'ethers';
 import { ConfigService } from '@nestjs/config';
-import { Contract, WebSocketProvider } from 'ethers';
+import { Contract, WebSocketProvider, InterfaceAbi } from 'ethers';
 
 @Injectable()
 export class BlockchainService {
@@ -27,7 +27,7 @@ export class BlockchainService {
 
   createContract(
     address: string,
-    abi: string[],
+    abi: InterfaceAbi,
     provider: ethers.WebSocketProvider,
   ): Contract {
     return new Contract(address, abi, provider);

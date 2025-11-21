@@ -1,7 +1,7 @@
 // src/contest/services/aggregation/meme-contest-aggregation.service.ts
 
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { PrismaService } from '../.././prisma/prisma.service';
+import { PrismaService } from '../../../prisma/prisma.service';
 import { PaginationParams } from '../../blockchain/interfaces/blockchain.interface';
 
 @Injectable()
@@ -184,6 +184,11 @@ export class MemeContestAggregationService {
           by: ['voter'],
           where: { contestAddress: contestAddress.toLowerCase() },
           _count: { voter: true },
+          orderBy: {
+            _count: {
+              voter: 'desc',
+            },
+          },
         }),
       ]);
 

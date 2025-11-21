@@ -1,5 +1,3 @@
-// src/contest/services/indexing/meme-contest-indexer.service.ts
-
 import {
   Injectable,
   Logger,
@@ -7,7 +5,7 @@ import {
   OnModuleDestroy,
 } from '@nestjs/common';
 import { MemeContestMonitorService } from '../../blockchain/services/memeContestMonitorService';
-import { PrismaService } from '../.././prisma/prisma.service';
+import { PrismaService } from '../../../prisma/prisma.service';
 import { RedisService } from '../.././redis/redis.service';
 import {
   ContestEvent,
@@ -30,6 +28,7 @@ export class MemeContestIndexerService
   ) {}
 
   async onModuleInit() {
+    this.logger.log('🚀 Contest Indexer Service Started');
     await this.initializeIndexing();
   }
 
@@ -85,6 +84,9 @@ export class MemeContestIndexerService
   private initializeEventSubscriptions() {
     // Subscribe to contest creations
     this.monitorService.subscribeToContestCreations(async (event) => {
+      this.logger.log(`🎯 NEW CONTEST: ${event.contestAddress}`);
+      this.logger.log(`   Creator: ${event.creator}`);
+      this.logger.log(`   TX: ${event.transactionHash}`);
       await this.indexContestCreated(event);
     });
 
@@ -92,6 +94,7 @@ export class MemeContestIndexerService
   }
 
   private async indexContestCreated(event: ContestEvent) {
+    this.logger.log(`✅ Contest indexed successfully`);
     const maxRetries = 3;
     let retryCount = 0;
 
@@ -107,7 +110,7 @@ export class MemeContestIndexerService
               creator: event.creator,
               contestStart: BigInt(event.contestStart),
               votingPeriod: BigInt(event.votingPeriod),
-              votingDelay: BigInt(0), // Will be fetched later
+              votingDelay: BigInt(0),
               state: 0, // Queued
               costToPropose: '0',
               costToVote: '0',
@@ -162,15 +165,24 @@ export class MemeContestIndexerService
   }
 
   private async subscribeToContestEvents(contestAddress: string) {
-    // Subscribe to proposals
-    this.monitorService.subscribeToProposals(contestAddress, async (event) => {
-      await this.indexProposal(event);
-    });
+    try {
+      // Subscribe to proposals
+      this.monitorService.subscribeToProposals(
+        contestAddress,
+        async (event) => {
+          await this.indexProposal(event);
+        },
+      );
 
-    // Subscribe to votes
-    this.monitorService.subscribeToVotes(contestAddress, async (event) => {
-      await this.indexVote(event);
-    });
+      // Subscribe to votes
+      this.monitorService.subscribeToVotes(contestAddress, async (event) => {
+        await this.indexVote(event);
+      });
+    } catch (error) {
+      this.logger.warn(
+        `Could not subscribe to contest ${contestAddress}: ${error.message}`,
+      );
+    }
   }
 
   private async indexProposal(event: ProposalEvent) {
@@ -294,7 +306,8 @@ export class MemeContestIndexerService
               contestAddress: event.contestAddress,
             },
             data: {
-              totalVotes: { increment: event.votes },
+              totalVotes: { increment: BigInt(event.votes) },
+
               updatedAt: new Date(),
             },
           });
@@ -303,7 +316,7 @@ export class MemeContestIndexerService
           await prisma.contest.update({
             where: { address: event.contestAddress },
             data: {
-              totalVotes: { increment: event.votes },
+              totalVotes: { increment: BigInt(event.votes) },
               updatedAt: new Date(),
             },
           });
@@ -368,17 +381,28 @@ export class MemeContestIndexerService
 
       // Index proposals and votes for each contest
       for (const contest of existingContests) {
-        const [proposals, votes] = await Promise.all([
-          this.monitorService.getProposals(contest.address, fromBlock, toBlock),
-          this.monitorService.getVotes(contest.address, fromBlock, toBlock),
-        ]);
+        try {
+          const [proposals, votes] = await Promise.all([
+            this.monitorService.getProposals(
+              contest.address,
+              fromBlock,
+              toBlock,
+            ),
+            this.monitorService.getVotes(contest.address, fromBlock, toBlock),
+          ]);
 
-        for (const proposal of proposals) {
-          await this.indexProposal(proposal);
-        }
+          for (const proposal of proposals) {
+            await this.indexProposal(proposal);
+          }
 
-        for (const vote of votes) {
-          await this.indexVote(vote);
+          for (const vote of votes) {
+            await this.indexVote(vote);
+          }
+        } catch (error) {
+          // Log but continue with other contests
+          this.logger.warn(
+            `Could not index historical data for contest ${contest.address}: ${error.message}`,
+          );
         }
       }
 

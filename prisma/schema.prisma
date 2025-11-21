@@ -31,7 +31,7 @@ model Contest {
   
   // Aggregated stats (denormalized for speed)
   totalProposals    Int       @default(0) @map("total_proposals")
-  totalVotes        String    @default("0") @map("total_votes")
+  totalVotes        BigInt @default(0)
   
   // Metadata
   createdAt         DateTime  @default(now()) @map("created_at")
@@ -64,7 +64,7 @@ model Proposal {
   
   // Fetched from contract.proposals()
   contentHash     String    @map("content_hash")
-  totalVotes      String    @default("0") @map("total_votes")
+  totalVotes      BigInt    @default(0) @map("total_votes")
   
   // Metadata
   createdAt       DateTime  @default(now()) @map("created_at")
