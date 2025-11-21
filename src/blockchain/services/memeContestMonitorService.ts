@@ -68,13 +68,6 @@ export class MemeContestMonitorService {
         throw new Error('ALCHEMY_API_KEY environment variable is required');
       }
 
-      // // Initialize Alchemy
-      // const alchemy = new Alchemy({
-      //   apiKey: apiKey,
-      //   network: Network.BASE_SEPOLIA,
-      // });
-
-      //  this.provider = await alchemy.config.getProvider();
       const wsUrl = `wss://base-sepolia.g.alchemy.com/v2/${apiKey}`;
 
       // Use WebSocketProvider with Alchemy URL
@@ -140,9 +133,8 @@ export class MemeContestMonitorService {
           topics: [this.CONTEST_CREATED_TOPIC],
         };
 
-        const logs = await this.blockchainService.getLogs(
-          this.provider,
-          filter,
+        const logs = await this.withRateLimit(() =>
+          this.blockchainService.getLogs(this.provider, filter),
         );
         const batchEvents = await Promise.all(
           logs.map(async (log) => {
@@ -179,6 +171,9 @@ export class MemeContestMonitorService {
         ).then((results) => results.filter((item) => item !== null));
 
         allEvents.push(...batchEvents);
+        if (currentBlock + this.BATCH_SIZE <= toBlock) {
+          await new Promise((resolve) => setTimeout(resolve, 1000)); // 1 second delay
+        }
         this.logger.log(
           `Processed blocks ${currentBlock} to ${batchToBlock} for contest creations`,
         );
@@ -223,9 +218,8 @@ export class MemeContestMonitorService {
           topics: [this.PROPOSAL_CREATED_TOPIC],
         };
 
-        const logs = await this.blockchainService.getLogs(
-          this.provider,
-          filter,
+        const logs = await this.withRateLimit(() =>
+          this.blockchainService.getLogs(this.provider, filter),
         );
         const batchProposals = await Promise.all(
           logs.map(async (log) => {
@@ -262,6 +256,10 @@ export class MemeContestMonitorService {
         ).then((results) => results.filter((item) => item !== null));
 
         allProposals.push(...batchProposals);
+
+        if (currentBlock + this.BATCH_SIZE <= toBlock) {
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+        }
         this.logger.log(
           `Processed blocks ${currentBlock} to ${batchToBlock} for contest ${contestAddress}`,
         );
@@ -659,5 +657,31 @@ export class MemeContestMonitorService {
   async getLatestBlockNumber(): Promise<number> {
     await this.initializeProvider();
     return this.blockchainService.getLatestBlockNumber(this.provider);
+  }
+
+  private async withRateLimit<T>(
+    operation: () => Promise<T>,
+    maxRetries = 3,
+  ): Promise<T> {
+    let lastError: Error = new Error('Unknown error occurred');
+
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      try {
+        return await operation();
+      } catch (error) {
+        lastError = error;
+
+        if (error.error?.code === 429) {
+          // Rate limited - exponential backoff
+          const delay = Math.pow(2, attempt) * 1000;
+          this.logger.warn(`Rate limited, retrying in ${delay}ms...`);
+          await new Promise((resolve) => setTimeout(resolve, delay));
+          continue;
+        }
+        throw error;
+      }
+    }
+
+    throw lastError;
   }
 }
