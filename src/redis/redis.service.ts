@@ -16,7 +16,7 @@ export class RedisService {
     try {
       // Use REDIS_URL if available, otherwise fallback to individual config
       const redisUrl = this.configService.get<string>('REDIS_URL');
-      
+
       if (redisUrl) {
         // Use the full Redis URL from Railway
         this.client = createClient({
@@ -29,7 +29,7 @@ export class RedisService {
           password: this.configService.get('REDIS_PASSWORD'),
         });
       }
-  
+
       this.client.on('error', (err) =>
         this.logger.error('Redis Client Error', err),
       );

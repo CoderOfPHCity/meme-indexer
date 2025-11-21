@@ -57,13 +57,14 @@ export class BlockchainService {
     if (chainId === '84532') {
       const rpcUrl = this.configService.get<string>('BASE_SEPOLIA_RPC_URL');
       if (!rpcUrl) {
-  
         return 'https://base-sepolia-rpc.publicnode.com';
       }
       return rpcUrl;
     }
-    
-    const rpcUrl = this.configService.get<string>(`${chainId.toUpperCase()}_RPC_URL`);
+
+    const rpcUrl = this.configService.get<string>(
+      `${chainId.toUpperCase()}_RPC_URL`,
+    );
     if (!rpcUrl) {
       throw new Error(`RPC URL not configured for chain ${chainId}`);
     }

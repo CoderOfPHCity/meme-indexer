@@ -8,18 +8,22 @@ import {
   VoteEvent,
 } from '../interfaces/blockchain.interface';
 import { FACTORY_ABI } from 'src/Indexer/config/constants';
-import { WebSocket } from 'ws';
+import { Alchemy, Network, AlchemySubscription } from 'alchemy-sdk';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class MemeContestMonitorService {
   protected readonly logger = new Logger(this.constructor.name);
-  protected provider: WebSocketProvider;
+  //protected provider: WebSocketProvider;
+
+  protected alchemy: Alchemy;
+  protected provider: any;
   //private readonly chainId = process.env.CHAIN_ID || '84532';
   protected readonly factoryAddress = process.env.FACTORY_ADDRESS;
   //private readonly contestContracts = process.env.CONTRACT_ADDRESSES
   protected factoryContract: Contract;
   protected contestContracts: Map<string, Contract> = new Map();
-  protected readonly BATCH_SIZE = 2000;
+  protected readonly BATCH_SIZE = 8;
 
   protected readonly CONTEST_CREATED_TOPIC = ethers.id(
     'ContestCreated(address,address,uint256,uint256,uint256)',
@@ -44,43 +48,66 @@ export class MemeContestMonitorService {
   ];
 
   constructor(
+    protected readonly configService: ConfigService,
     protected readonly blockchainService: BlockchainService,
     protected readonly chainId: string,
     protected readonly contestConfigs: ContestConfig[],
   ) {
-    this.initializeProvider();
+    // this.initializeProvider();
+  }
+
+  async initialize(): Promise<void> {
+    await this.initializeProvider();
   }
 
   protected async initializeProvider() {
-    const rpcUrl = this.blockchainService.getRpcUrl(this.chainId);
+    try {
+      const apiKey = this.configService.get<string>('ALCHEMY_API_KEY');
 
-    if (!rpcUrl) {
-      throw new Error(`RPC URL not found for chain ${this.chainId}`);
-    }
-
-    const wsUrl = rpcUrl.replace('https', 'wss').replace('http', 'ws');
-    this.provider = new WebSocketProvider(wsUrl);
-
-    (this.provider.websocket as WebSocket).on('close', async () => {
-      console.log('WebSocket disconnected, reconnecting...');
-      await this.initializeProvider();
-    });
-
-    for (const config of this.contestConfigs) {
-      if (config.isFactory) {
-        this.factoryContract = this.blockchainService.createContract(
-          this.factoryAddress || config.address,
-          FACTORY_ABI,
-          this.provider,
-        );
-      } else {
-        const contract = this.blockchainService.createContract(
-          config.address,
-          this.CONTEST_ABI,
-          this.provider,
-        );
-        this.contestContracts.set(config.address, contract);
+      if (!apiKey) {
+        throw new Error('ALCHEMY_API_KEY environment variable is required');
       }
+
+      // // Initialize Alchemy
+      // const alchemy = new Alchemy({
+      //   apiKey: apiKey,
+      //   network: Network.BASE_SEPOLIA,
+      // });
+
+      //  this.provider = await alchemy.config.getProvider();
+      const wsUrl = `wss://base-sepolia.g.alchemy.com/v2/${apiKey}`;
+
+      // Use WebSocketProvider with Alchemy URL
+      this.provider = new WebSocketProvider(wsUrl);
+
+      if (this.provider.websocket) {
+        this.provider.websocket.addEventListener('close', async () => {
+          console.log('WebSocket disconnected, reconnecting...');
+          await this.initializeProvider();
+        });
+      }
+
+      for (const config of this.contestConfigs) {
+        if (config.isFactory) {
+          this.factoryContract = this.blockchainService.createContract(
+            this.factoryAddress || config.address,
+            FACTORY_ABI,
+            this.provider,
+          );
+        } else {
+          const contract = this.blockchainService.createContract(
+            config.address,
+            this.CONTEST_ABI,
+            this.provider,
+          );
+          this.contestContracts.set(config.address, contract);
+        }
+      }
+
+      this.logger.log('✅ Alchemy WebSocket connected');
+    } catch (error) {
+      this.logger.error('Failed to initialize Alchemy provider', error);
+      setTimeout(() => this.initializeProvider(), 5000);
     }
   }
 
@@ -100,6 +127,11 @@ export class MemeContestMonitorService {
           currentBlock + this.BATCH_SIZE - 1,
           toBlock,
         );
+
+        if (batchToBlock - currentBlock > 10) {
+          this.logger.warn(`Adjusting batch size for Alchemy Free tier`);
+          currentBlock = batchToBlock - 10;
+        }
 
         const filter = {
           address: this.factoryContract.target as string,
@@ -625,6 +657,7 @@ export class MemeContestMonitorService {
   }
 
   async getLatestBlockNumber(): Promise<number> {
+    await this.initializeProvider();
     return this.blockchainService.getLatestBlockNumber(this.provider);
   }
 }

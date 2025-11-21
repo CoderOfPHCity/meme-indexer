@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { BlockchainModule } from './blockchain/blockchain.module';
@@ -27,13 +27,17 @@ import { MemeContestAggregationService } from './Indexer/services/meme-contest-a
     MemeContestAggregationService,
     {
       provide: MemeContestMonitorService,
-      useFactory: (blockchainService: BlockchainService) => {
-        const factoryAddress = process.env.FACTORY_ADDRESS;
+      useFactory: (
+        blockchainService: BlockchainService,
+        configService: ConfigService,
+      ) => {
+        const factoryAddress = configService.get('FACTORY_ADDRESS');
         if (!factoryAddress) {
           throw new Error('FACTORY_ADDRESS environment variable is required');
         }
 
         return new MemeContestMonitorService(
+          configService,
           blockchainService,
           process.env.CHAIN_ID || '84532',
           [
@@ -44,7 +48,7 @@ import { MemeContestAggregationService } from './Indexer/services/meme-contest-a
           ],
         );
       },
-      inject: [BlockchainService],
+      inject: [BlockchainService, ConfigService],
     },
   ],
 })
