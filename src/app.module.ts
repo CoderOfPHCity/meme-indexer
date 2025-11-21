@@ -6,8 +6,10 @@ import { BlockchainModule } from './blockchain/blockchain.module';
 import { MemeContestIndexerService } from './Indexer/services/meme-contest-indexer.service';
 import { MemeContestMonitorService } from './blockchain/services/memeContestMonitorService';
 import { BlockchainService } from './blockchain/services/blockchain.service';
-import { PrismaModule } from '../prisma/prisma.module'; // Add this
+import { PrismaModule } from '../prisma/prisma.module'; 
 import { RedisModule } from './redis/redis.module';
+import { MemeContestController } from './Indexer/controllers/meme-contest.controller'; 
+import { MemeContestAggregationService } from './Indexer/services/meme-contest-aggregation.service';
 
 @Module({
   imports: [
@@ -15,13 +17,14 @@ import { RedisModule } from './redis/redis.module';
       isGlobal: true,
     }),
     BlockchainModule,
-    PrismaModule, // Add this
+    PrismaModule, 
     RedisModule,
   ],
-  controllers: [AppController],
+  controllers: [AppController, MemeContestController],
   providers: [
     AppService,
     MemeContestIndexerService,
+    MemeContestAggregationService, 
     {
       provide: MemeContestMonitorService,
       useFactory: (blockchainService: BlockchainService) => {

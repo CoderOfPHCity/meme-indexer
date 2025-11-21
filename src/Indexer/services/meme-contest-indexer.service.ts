@@ -166,6 +166,8 @@ export class MemeContestIndexerService
 
   private async subscribeToContestEvents(contestAddress: string) {
     try {
+
+      this.monitorService.addContestContract(contestAddress);
       // Subscribe to proposals
       this.monitorService.subscribeToProposals(
         contestAddress,
@@ -211,7 +213,7 @@ export class MemeContestIndexerService
               contestAddress: event.contestAddress,
               author: event.author,
               description: event.description,
-              contentHash: proposalDetails.contentHash,
+              contentHash: proposalDetails.contentHash || '',
               totalVotes: proposalDetails.totalVotes,
               blockNumber: BigInt(event.blockNumber),
               transactionHash: event.transactionHash,
@@ -382,6 +384,8 @@ export class MemeContestIndexerService
       // Index proposals and votes for each contest
       for (const contest of existingContests) {
         try {
+          this.monitorService.addContestContract(contest.address);
+
           const [proposals, votes] = await Promise.all([
             this.monitorService.getProposals(
               contest.address,
@@ -417,6 +421,8 @@ export class MemeContestIndexerService
       throw error;
     }
   }
+
+  
 
   async onModuleDestroy() {
     // Unsubscribe from all contests

@@ -397,14 +397,15 @@ export class MemeContestMonitorService {
   // ];
 
   protected readonly CONTEST_ABI = [
-    'event ProposalCreated(uint256 indexed proposalId, address indexed author, string description)',
-    'event VoteCast(address indexed voter, uint256 indexed proposalId, uint256 votes, uint256 cost)',
-    'event ProposalsDeleted(uint256[] proposalIds)',
-    'event ContestCanceled()',
-    'function state() view returns (uint8)',
-    'function getWinners(uint256 count) view returns (uint256[], uint256[])',
-    'function proposals(uint256) view returns (tuple(address author, string description, string contentHash, uint256 totalVotes, bool exists))',
-    'function totalProposals() view returns (uint256)',
+    "function propose(string, string) external payable returns (uint256)",
+    "function castVote(uint256, uint256) external payable",
+    "function contestStart() external view returns (uint256)",
+    "function voteStart() external view returns (uint256)",
+    "function votingPeriod() external view returns (uint256)",
+    "function proposals(uint256) external view returns (address, string, string, uint256, bool)",
+    "function votes(uint256, address) external view returns (uint256)",
+    "event ProposalCreated(uint256 indexed proposalId, address indexed author, string description)",
+    "event VoteCast(address indexed voter, uint256 indexed proposalId, uint256 votes, uint256 cost)",
   ];
 
   constructor(
@@ -759,6 +760,7 @@ export class MemeContestMonitorService {
     contract.on(
       'ProposalCreated',
       async (proposalId, author, description, event) => {
+        this.logger.log(`📝 ProposalCreated event detected for ${contestAddress}: ${proposalId}`);
         const maxRetries = 3;
         let attempt = 0;
 
@@ -909,7 +911,7 @@ export class MemeContestMonitorService {
         author: proposal.author,
         description: proposal.description,
         contentHash: proposal.contentHash,
-        totalVotes: ethers.formatEther(proposal.totalVotes),
+        totalVotes: proposal.totalVotes ? ethers.formatEther(proposal.totalVotes) : '0',
         exists: proposal.exists,
       };
     } catch (error) {
@@ -970,6 +972,18 @@ export class MemeContestMonitorService {
     });
     this.logger.log('Started block monitoring');
   }
+
+addContestContract(contestAddress: string): void {
+  if (!this.contestContracts.has(contestAddress)) {
+    const contract = this.blockchainService.createContract(
+      contestAddress,
+      this.CONTEST_ABI,
+      this.provider,
+    );
+    this.contestContracts.set(contestAddress, contract);
+    this.logger.log(`✅ Added contest contract: ${contestAddress}`);
+  }
+}
 
   async getLatestBlockNumber(): Promise<number> {
     return this.blockchainService.getLatestBlockNumber(this.provider);

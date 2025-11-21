@@ -22,7 +22,7 @@ export class MemeContestAggregationService {
     try {
       const where: any = {};
       if (filters.state !== undefined) where.state = filters.state;
-      if (filters.creator) where.creator = filters.creator.toLowerCase();
+      if (filters.creator) where.creator = filters.creator;
 
       const [contests, total] = await this.prisma.$transaction([
         this.prisma.contest.findMany({
@@ -66,7 +66,7 @@ export class MemeContestAggregationService {
   async getContestDetails(address: string) {
     try {
       const contest = await this.prisma.contest.findUnique({
-        where: { address: address.toLowerCase() },
+        where: { address: address },
         include: {
           _count: {
             select: { proposals: true, votes: true },
@@ -110,7 +110,7 @@ export class MemeContestAggregationService {
 
       const [proposals, total] = await this.prisma.$transaction([
         this.prisma.proposal.findMany({
-          where: { contestAddress: contestAddress.toLowerCase() },
+          where: { contestAddress: contestAddress },
           orderBy,
           skip,
           take: limit,
@@ -121,7 +121,7 @@ export class MemeContestAggregationService {
           },
         }),
         this.prisma.proposal.count({
-          where: { contestAddress: contestAddress.toLowerCase() },
+          where: { contestAddress: contestAddress },
         }),
       ]);
 
@@ -147,7 +147,7 @@ export class MemeContestAggregationService {
   async getLeaderboard(contestAddress: string, limit: number = 10) {
     try {
       const topProposals = await this.prisma.proposal.findMany({
-        where: { contestAddress: contestAddress.toLowerCase() },
+        where: { contestAddress: contestAddress },
         orderBy: { totalVotes: 'desc' },
         take: limit,
         select: {
@@ -173,7 +173,7 @@ export class MemeContestAggregationService {
     try {
       const [contest, voteStats] = await this.prisma.$transaction([
         this.prisma.contest.findUnique({
-          where: { address: contestAddress.toLowerCase() },
+          where: { address: contestAddress },
           include: {
             _count: {
               select: { proposals: true, votes: true },
@@ -182,7 +182,7 @@ export class MemeContestAggregationService {
         }),
         this.prisma.vote.groupBy({
           by: ['voter'],
-          where: { contestAddress: contestAddress.toLowerCase() },
+          where: { contestAddress: contestAddress },
           _count: { voter: true },
           orderBy: {
             _count: {
@@ -218,9 +218,9 @@ export class MemeContestAggregationService {
     const skip = (page - 1) * limit;
 
     try {
-      const where: any = { contestAddress: contestAddress.toLowerCase() };
+      const where: any = { contestAddress: contestAddress };
       if (filters.proposalId) where.proposalId = filters.proposalId;
-      if (filters.voter) where.voter = filters.voter.toLowerCase();
+      if (filters.voter) where.voter = filters.voter;
 
       const [votes, total] = await this.prisma.$transaction([
         this.prisma.vote.findMany({
@@ -265,7 +265,7 @@ export class MemeContestAggregationService {
         where: {
           proposalId_contestAddress: {
             proposalId,
-            contestAddress: contestAddress.toLowerCase(),
+            contestAddress: contestAddress,
           },
         },
         include: {
@@ -309,19 +309,19 @@ export class MemeContestAggregationService {
       const [contestsCreated, proposalsSubmitted, votesCast] =
         await this.prisma.$transaction([
           this.prisma.contest.count({
-            where: { creator: userAddress.toLowerCase() },
+            where: { creator: userAddress },
           }),
           this.prisma.proposal.count({
-            where: { author: userAddress.toLowerCase() },
+            where: { author: userAddress },
           }),
           this.prisma.vote.count({
-            where: { voter: userAddress.toLowerCase() },
+            where: { voter: userAddress },
           }),
         ]);
 
       const [recentProposals, recentVotes] = await this.prisma.$transaction([
         this.prisma.proposal.findMany({
-          where: { author: userAddress.toLowerCase() },
+          where: { author: userAddress },
           orderBy: { createdAt: 'desc' },
           take: 5,
           select: {
@@ -333,7 +333,7 @@ export class MemeContestAggregationService {
           },
         }),
         this.prisma.vote.findMany({
-          where: { voter: userAddress.toLowerCase() },
+          where: { voter: userAddress },
           orderBy: { votedAt: 'desc' },
           take: 5,
           include: {
