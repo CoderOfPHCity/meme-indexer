@@ -295,7 +295,7 @@ export class MemeContestIndexerService
               proposalId: event.proposalId,
               contestAddress: event.contestAddress,
               voter: event.voter,
-              numVotes: event.votes,
+              numVotes: (parseFloat(event.votes) * 1e18).toString(),
               cost: event.cost,
               votedAt: new Date(event.timestamp * 1000),
               blockNumber: BigInt(event.blockNumber.toString()),
