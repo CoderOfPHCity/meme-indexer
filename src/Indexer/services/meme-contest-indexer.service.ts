@@ -276,6 +276,10 @@ export class MemeContestIndexerService
     const maxRetries = 3;
     let retryCount = 0;
 
+    console.log('  event.cost:', event.cost, 'type:', typeof event.cost);
+    console.log('  event.votes:', event.votes, 'type:', typeof event.votes);
+    console.log('  event.proposalId:', event.proposalId);
+
     while (retryCount < maxRetries) {
       try {
         await this.prisma.$transaction(async (prisma) => {
@@ -292,7 +296,7 @@ export class MemeContestIndexerService
               contestAddress: event.contestAddress,
               voter: event.voter,
               numVotes: event.votes.toString(),
-              cost: (parseFloat(event.cost) * 1e18).toFixed(0),
+              cost: (parseFloat(event.cost) / 1e18).toFixed(0),
               votedAt: new Date(event.timestamp * 1000),
               blockNumber: BigInt(event.blockNumber),
               transactionHash: event.transactionHash,
