@@ -13,6 +13,7 @@ import {
   VoteEvent,
 } from '../../blockchain/interfaces/blockchain.interface';
 import { REDIS_KEYS } from '.././config/constants';
+import { parseUnits } from 'ethers';
 
 @Injectable()
 export class MemeContestIndexerService
@@ -290,8 +291,8 @@ export class MemeContestIndexerService
               proposalId: event.proposalId,
               contestAddress: event.contestAddress,
               voter: event.voter,
-              numVotes: event.votes,
-              cost: BigInt(Math.floor(parseFloat(event.cost) * 1e18)).toString(),
+              numVotes: event.votes.toString(),
+              cost: parseUnits(event.cost, 18).toString(),
               votedAt: new Date(event.timestamp * 1000),
               blockNumber: BigInt(event.blockNumber),
               transactionHash: event.transactionHash,
