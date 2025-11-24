@@ -312,7 +312,7 @@ export class MemeContestIndexerService
               contestAddress: event.contestAddress,
             },
             data: {
-              totalVotes: { increment: parseInt(event.votes)   },
+              totalVotes: { increment: parseInt((parseFloat(event.votes) * 1e18).toString()) },
 
               updatedAt: new Date(),
             },
@@ -322,7 +322,7 @@ export class MemeContestIndexerService
           await prisma.contest.update({
             where: { address: event.contestAddress },
             data: {
-              totalVotes: { increment: parseInt(event.votes) },
+              totalVotes: { increment: parseInt((parseFloat(event.votes) * 1e18).toString()) },
               updatedAt: new Date(),
             },
           });
