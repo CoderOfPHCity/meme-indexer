@@ -97,7 +97,7 @@ export class MemeContestMonitorService {
         }
       }
 
-      this.logger.log('✅ Alchemy WebSocket connected');
+      this.logger.log('WebSocket connected');
     } catch (error) {
       this.logger.error('Failed to initialize Alchemy provider', error);
       setTimeout(() => this.initializeProvider(), 5000);
