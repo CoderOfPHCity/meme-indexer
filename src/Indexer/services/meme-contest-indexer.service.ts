@@ -296,7 +296,7 @@ export class MemeContestIndexerService
               contestAddress: event.contestAddress,
               voter: event.voter,
               numVotes: event.votes,
-              cost: parseUnits(event.cost, 18).toString(),
+              cost: event.cost,
               votedAt: new Date(event.timestamp * 1000),
               blockNumber: BigInt(event.blockNumber.toString()),
               transactionHash: event.transactionHash,
@@ -312,7 +312,7 @@ export class MemeContestIndexerService
               contestAddress: event.contestAddress,
             },
             data: {
-              totalVotes: { increment: BigInt(event.votes) },
+              totalVotes: { increment: parseInt(event.votes)   },
 
               updatedAt: new Date(),
             },
