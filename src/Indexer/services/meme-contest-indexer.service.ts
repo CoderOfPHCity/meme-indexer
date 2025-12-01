@@ -36,32 +36,87 @@ export class MemeContestIndexerService
   private async initializeIndexing() {
     try {
       const currentBlock = await this.monitorService.getLatestBlockNumber();
-
-      const lastIndexedBlock = await this.redis.get(
-        REDIS_KEYS.LAST_INDEXED_BLOCK,
-      );
-
-      // Start real-time subscriptions
+      const lastIndexedBlock = await this.redis.get(REDIS_KEYS.LAST_INDEXED_BLOCK);
+  
+      const activeContests = await this.prisma.contest.findMany({
+        where: {
+          OR: [
+            { state: 1 }, // Active state
+            {
+              contestStart: {
+                // Started in last 7 days
+                gt: BigInt(Math.floor(Date.now() / 1000) - 3 * 24 * 60 * 60)
+              }
+            }
+          ]
+        },
+        select: { address: true },
+      });
+  
+      // Start real-time subscriptions IMMEDIATELY
       this.initializeEventSubscriptions();
 
-      // Handle historical sync if needed
-      if (lastIndexedBlock) {
+      await this.redis.set(REDIS_KEYS.LAST_INDEXED_BLOCK, currentBlock.toString());
+  
+      // Start background historical indexing WITHOUT blocking
+      if (lastIndexedBlock && activeContests.length > 0) {
         const lastBlock = parseInt(lastIndexedBlock);
         if (lastBlock < currentBlock) {
+          const ONE_DAY_BLOCKS = 5760; // ~24 hours
+          const startBlock = Math.max(lastBlock, currentBlock - ONE_DAY_BLOCKS);
+          
           this.logger.log(
-            `Starting historical indexing from block ${lastBlock} to ${currentBlock}`,
+            `Starting BACKGROUND indexing for ${activeContests.length} active contests`,
           );
-          this.startHistoricalIndexing(lastBlock, currentBlock);
+          
+          // Don't await - fire and forget
+          this.indexActiveContestsBackground(activeContests, startBlock, currentBlock);
         }
-      } else {
-        await this.redis.set(
-          REDIS_KEYS.LAST_INDEXED_BLOCK,
-          currentBlock.toString(),
-        );
       }
+      
+      this.logger.log(`🚀 Indexer ready - real-time active, background indexing ${activeContests.length} contests`);
     } catch (error) {
       this.logger.error('Failed to initialize indexing', error);
       throw error;
+    }
+  }
+  
+
+  private async indexActiveContestsBackground(
+    activeContests: { address: string }[], 
+    startBlock: number, 
+    currentBlock: number
+  ) {
+    try {
+      for (const contest of activeContests) {
+        await this.indexContestHistory(contest.address, startBlock, currentBlock);
+      }
+      this.logger.log(`✅ Background indexing completed for ${activeContests.length} contests`);
+    } catch (error) {
+      this.logger.error('Background indexing failed', error);
+    }
+  }
+
+  private async indexContestHistory(contestAddress: string, fromBlock: number, toBlock: number) {
+    try {
+      this.monitorService.addContestContract(contestAddress);
+  
+      const [proposals, votes] = await Promise.all([
+        this.monitorService.getProposals(contestAddress, fromBlock, toBlock),
+        this.monitorService.getVotes(contestAddress, fromBlock, toBlock),
+      ]);
+  
+      for (const proposal of proposals) {
+        await this.indexProposal(proposal);
+      }
+  
+      for (const vote of votes) {
+        await this.indexVote(vote);
+      }
+  
+      this.logger.log(`Indexed history for contest ${contestAddress} (blocks ${fromBlock}-${toBlock})`);
+    } catch (error) {
+      this.logger.warn(`Could not index history for contest ${contestAddress}: ${error.message}`);
     }
   }
 
