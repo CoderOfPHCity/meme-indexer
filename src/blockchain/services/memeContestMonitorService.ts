@@ -26,7 +26,7 @@ export class MemeContestMonitorService {
   protected readonly BATCH_SIZE = 8;
 
   protected readonly CONTEST_CREATED_TOPIC = ethers.id(
-    'ContestCreated(address,address,uint256,uint256,uint256)',
+    'ContestCreated(address,address,uint256,string,string,uint256,uint256)',
   );
   protected readonly PROPOSAL_CREATED_TOPIC = ethers.id(
     'ProposalCreated(uint256,address,string)',
@@ -160,6 +160,8 @@ export class MemeContestMonitorService {
               creator: parsedLog.args.creator,
               contestAddress: parsedLog.args.contestAddress,
               contestId: parsedLog.args.contestId.toString(),
+              title: parsedLog.args.title || '',       
+              description: parsedLog.args.description || '',
               contestStart: parsedLog.args.contestStart.toString(),
               votingPeriod: parsedLog.args.votingPeriod.toString(),
               blockNumber: log.blockNumber,
@@ -365,6 +367,8 @@ export class MemeContestMonitorService {
         creator,
         contestAddress,
         contestId,
+        title,        
+        description,     
         contestStart,
         votingPeriod,
         event,
@@ -379,6 +383,8 @@ export class MemeContestMonitorService {
               creator,
               contestAddress,
               contestId: contestId.toString(),
+              title: title || '',           
+              description: description || '', 
               contestStart: contestStart.toString(),
               votingPeriod: votingPeriod.toString(),
               blockNumber: event.log.blockNumber,

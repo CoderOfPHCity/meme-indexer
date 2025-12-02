@@ -26,6 +26,8 @@ export interface ContestEvent {
   creator: string;
   contestAddress: string;
   contestId: string;
+  title: string;      
+  description: string;
   contestStart: string;
   votingPeriod: string;
   blockNumber: number;

@@ -41,7 +41,8 @@ export class MemeContestIndexerService
       const activeContests = await this.prisma.contest.findMany({
         where: {
           OR: [
-            { state: 0 }, 
+            { state: 1 }, // Active state
+          { state: 0 }, // Queue
             {
               contestStart: {
                 // Started in last 7 days
@@ -163,6 +164,8 @@ export class MemeContestIndexerService
             create: {
               address: event.contestAddress,
               contestId: BigInt(event.contestId),
+              title: event.title || '',                
+              description: event.description || '', 
               creator: event.creator,
               contestStart: BigInt(event.contestStart),
               votingPeriod: BigInt(event.votingPeriod),

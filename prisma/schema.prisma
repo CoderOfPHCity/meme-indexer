@@ -17,7 +17,8 @@ model Contest {
   id                String    @id @default(uuid())
   address           String    @unique
   contestId         BigInt
-  
+  title             String    @default("")          
+  description       String    @db.Text @default("")  
   // From ContestCreated event
   creator           String
   contestStart      BigInt    @map("contest_start")

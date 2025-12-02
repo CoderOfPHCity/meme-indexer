@@ -49,6 +49,8 @@ export class MemeContestAggregationService {
           blockNumber: contest.blockNumber.toString(),
           proposalCount: contest._count.proposals,
           voteCount: contest._count.votes,
+          title: contest.title,
+          description: contest.description,
         })),
         pagination: {
           page,
@@ -87,6 +89,8 @@ export class MemeContestAggregationService {
         blockNumber: contest.blockNumber.toString(),
         proposalCount: contest._count.proposals,
         voteCount: contest._count.votes,
+        title: contest.title,
+        description: contest.description,
       };
     } catch (error) {
       this.logger.error(`Error fetching contest ${address}`, error);
