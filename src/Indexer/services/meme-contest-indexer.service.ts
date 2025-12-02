@@ -46,7 +46,7 @@ export class MemeContestIndexerService
             {
               contestStart: {
                 // Started in last 7 days
-                gt: BigInt(Math.floor(Date.now() / 1000) - 3 * 24 * 60 * 60)
+                gt: BigInt(Math.floor(Date.now() / 1000) - 1 * 24 * 60 * 60)
               }
             }
           ]
@@ -71,7 +71,7 @@ export class MemeContestIndexerService
           );
           
           // Don't await - fire and forget
-          this.indexActiveContestsBackground(activeContests, startBlock, currentBlock);
+        //  this.indexActiveContestsBackground(activeContests, startBlock, currentBlock);
         }
       }
       
