@@ -71,7 +71,7 @@ export class MemeContestIndexerService
           );
           
           // Don't await - fire and forget
-        //  this.indexActiveContestsBackground(activeContests, startBlock, currentBlock);
+          this.indexActiveContestsBackground(activeContests, startBlock, currentBlock);
         }
       }
       
