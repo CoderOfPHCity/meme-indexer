@@ -93,10 +93,28 @@ export class MemeContestIndexerService
     startBlock: number, 
     currentBlock: number
   ) {
+    const BATCH_SIZE = 3;
+    const DELAY_BETWEEN_BATCHES = 2000;
+    
     try {
-      for (const contest of activeContests) {
-        await this.indexContestHistory(contest.address, startBlock, currentBlock);
+      for (let i = 0; i < activeContests.length; i += BATCH_SIZE) {
+        const batch = activeContests.slice(i, i + BATCH_SIZE);
+        
+        await Promise.allSettled(
+          batch.map(contest => 
+            this.indexContestHistory(contest.address, startBlock, currentBlock)
+          )
+        );
+        
+        this.logger.log(
+          `Background: ${Math.min(i + BATCH_SIZE, activeContests.length)}/${activeContests.length} contests`
+        );
+        
+        if (i + BATCH_SIZE < activeContests.length) {
+          await new Promise(resolve => setTimeout(resolve, DELAY_BETWEEN_BATCHES));
+        }
       }
+      
       this.logger.log(`✅ Background indexing completed for ${activeContests.length} contests`);
     } catch (error) {
       this.logger.error('Background indexing failed', error);
@@ -104,22 +122,29 @@ export class MemeContestIndexerService
   }
 
   private async indexContestHistory(contestAddress: string, fromBlock: number, toBlock: number) {
+    const CHUNK_SIZE = 1000;
+    
     try {
-      // this.monitorService.addContestContract(contestAddress);
-  
-      const [proposals, votes] = await Promise.all([
-        this.monitorService.getProposals(contestAddress, fromBlock, toBlock),
-        this.monitorService.getVotes(contestAddress, fromBlock, toBlock),
-      ]);
-  
-      for (const proposal of proposals) {
-        await this.indexProposal(proposal);
+      for (let currentFrom = fromBlock; currentFrom <= toBlock; currentFrom += CHUNK_SIZE) {
+        const currentTo = Math.min(currentFrom + CHUNK_SIZE - 1, toBlock);
+        
+        const [proposals, votes] = await Promise.all([
+          this.monitorService.getProposals(contestAddress, currentFrom, currentTo),
+          this.monitorService.getVotes(contestAddress, currentFrom, currentTo),
+        ]);
+    
+        for (const proposal of proposals) {
+          await this.indexProposal(proposal);
+        }
+    
+        for (const vote of votes) {
+          await this.indexVote(vote);
+        }
+        
+        // Yield to event loop after each chunk
+        await new Promise(resolve => setImmediate(resolve));
       }
-  
-      for (const vote of votes) {
-        await this.indexVote(vote);
-      }
-  
+    
       this.logger.log(`Indexed history for contest ${contestAddress} (blocks ${fromBlock}-${toBlock})`);
     } catch (error) {
       this.logger.warn(`Could not index history for contest ${contestAddress}: ${error.message}`);
