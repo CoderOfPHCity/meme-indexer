@@ -14,13 +14,10 @@ import { ConfigService } from '@nestjs/config';
 @Injectable()
 export class MemeContestMonitorService {
   protected readonly logger = new Logger(this.constructor.name);
-  //protected provider: WebSocketProvider;
 
   protected alchemy: Alchemy;
   protected provider: any;
-  //private readonly chainId = process.env.CHAIN_ID || '84532';
   protected readonly factoryAddress = process.env.FACTORY_ADDRESS;
-  //private readonly contestContracts = process.env.CONTRACT_ADDRESSES
   protected factoryContract: Contract;
   protected contestContracts: Map<string, Contract> = new Map();
   protected readonly BATCH_SIZE = 8;
