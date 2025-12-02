@@ -57,6 +57,10 @@ export class MemeContestIndexerService
       // Start real-time subscriptions IMMEDIATELY
       this.initializeEventSubscriptions();
 
+      for (const contest of activeContests) {
+        this.monitorService.addContestContract(contest.address);
+      }
+
       await this.redis.set(REDIS_KEYS.LAST_INDEXED_BLOCK, currentBlock.toString());
   
       // Start background historical indexing WITHOUT blocking
@@ -70,9 +74,10 @@ export class MemeContestIndexerService
             `Starting BACKGROUND indexing for ${activeContests.length} active contests`,
           );
           
-          // Don't await - fire and forget
-          this.indexActiveContestsBackground(activeContests, startBlock, currentBlock);
-        }
+          setImmediate(() => {
+            this.indexActiveContestsBackground(activeContests, startBlock, currentBlock);
+          });
+         }
       }
       
       this.logger.log(`🚀 Indexer ready - real-time active, background indexing ${activeContests.length} contests`);
@@ -100,7 +105,7 @@ export class MemeContestIndexerService
 
   private async indexContestHistory(contestAddress: string, fromBlock: number, toBlock: number) {
     try {
-      this.monitorService.addContestContract(contestAddress);
+      // this.monitorService.addContestContract(contestAddress);
   
       const [proposals, votes] = await Promise.all([
         this.monitorService.getProposals(contestAddress, fromBlock, toBlock),
